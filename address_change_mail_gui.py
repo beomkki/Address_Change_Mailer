@@ -168,11 +168,21 @@ def launch_gui() -> None:
     # Info text
     info_text = ttk.Label(
         frame,
-        text="💡 수신인 정보는 상표 리스트 또는 메일링 리스트에서 자동으로 조회됩니다.",
+        text="💡 수신인 정보와 첨부파일은 상표 리스트에서 자동으로 조회됩니다.",
         foreground="blue",
         font=("", 9),
     )
-    info_text.grid(row=row, column=0, columnspan=3, pady=(12, 8))
+    info_text.grid(row=row, column=0, columnspan=3, pady=(12, 4))
+    row += 1
+
+    # Additional info about attachments
+    attachment_info = ttk.Label(
+        frame,
+        text="   첨부파일: '첨부파일' 컬럼에 경로 입력 (여러 파일은 세미콜론으로 구분)",
+        foreground="gray",
+        font=("", 8),
+    )
+    attachment_info.grid(row=row, column=0, columnspan=3, pady=(0, 8))
     row += 1
 
     # Run button
