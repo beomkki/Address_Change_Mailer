@@ -318,7 +318,7 @@ def run_address_change_mail_merge(
                 print(f"  CC: {cc_value[:50]}{'...' if len(cc_value) > 50 else ''}")
 
             # Generate MSG file metadata
-            subject = f"[{country_name}]"
+            subject = f"Inquiry regarding Recordal of Change of Address in {country_name}"
             base_name = sanitize_filename(f"{country_code}_{country_name}_AddressChange", country_code, index)
 
             # Get attachment info from first mark
