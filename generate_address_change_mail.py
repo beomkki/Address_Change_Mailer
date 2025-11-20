@@ -150,6 +150,7 @@ def prepare_template_with_marks(
     marks: List[Dict[str, str]],
     tmp_dir: Path,
     country_name: str = "",
+    subject: str = "",
 ) -> Path:
     """Prepare Word template by populating the first table with trademark data.
 
@@ -158,6 +159,7 @@ def prepare_template_with_marks(
         marks: List of trademark records to insert
         tmp_dir: Temporary directory for the modified template
         country_name: Name of the country (for context)
+        subject: Email subject line
 
     Returns:
         Path to the modified template
@@ -166,6 +168,16 @@ def prepare_template_with_marks(
 
     if not doc.tables:
         raise ValueError("템플릿에 테이블이 없습니다.")
+
+    # Add YAML header for docx2msg (required for subject line)
+    header = doc.sections[0].header
+    # Clear existing header paragraphs
+    for para in list(header.paragraphs):
+        header._element.remove(para._element)
+    # Add YAML front matter
+    header.add_paragraph("---")
+    header.add_paragraph(f"Subject: {subject}")
+    header.add_paragraph("---")
 
     # Get the first table (trademark table)
     table = doc.tables[0]
@@ -299,14 +311,14 @@ def run_address_change_mail_merge(
             if cc_value:
                 print(f"  CC: {cc_value[:50]}{'...' if len(cc_value) > 50 else ''}")
 
-            # Prepare template with marks
-            prepared_template = prepare_template_with_marks(
-                template_path, marks, tmp_path, country_code
-            )
-
-            # Generate MSG file
+            # Generate MSG file metadata
             subject = f"Address Change - {country_name} ({country_code}) - {len(marks)} marks"
             base_name = sanitize_filename(f"{country_code}_{country_name}_AddressChange", country_code, index)
+
+            # Prepare template with marks
+            prepared_template = prepare_template_with_marks(
+                template_path, marks, tmp_path, country_code, subject
+            )
 
             try:
                 with Docx2Msg(prepared_template) as converter:
