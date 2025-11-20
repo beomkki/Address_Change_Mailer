@@ -266,19 +266,35 @@ def run_address_change_mail_merge(
         for index, (country_code, marks) in enumerate(sorted(marks_by_country.items()), start=1):
             print(f"\nProcessing {country_code}: {len(marks)} marks")
 
-            # Get recipient info
-            recipient_info = recipient_mapping.get(country_code)
-            if not recipient_info:
-                print(f"  Warning: No recipient mapping found for {country_code}, skipping...")
-                continue
+            # Priority 1: Check if marks data has recipient info (수신, 참조, 국가명칭)
+            # Use the first mark's data as representative for the country
+            first_mark = marks[0] if marks else {}
+            to_value = first_mark.get("수신", "") or first_mark.get("To", "")
+            cc_value = first_mark.get("참조", "") or first_mark.get("CC", "")
+            country_name = first_mark.get("국가명칭", "") or first_mark.get("Country Name", "")
 
-            to_value = recipient_info.get("to", "")
-            cc_value = recipient_info.get("cc", "")
-            country_name = recipient_info.get("country_name", country_code)
+            # Priority 2: If not in marks data, lookup from recipient mapping
+            if not to_value:
+                recipient_info = recipient_mapping.get(country_code)
+                if recipient_info:
+                    to_value = recipient_info.get("to", "")
+                    cc_value = cc_value or recipient_info.get("cc", "")
+                    country_name = country_name or recipient_info.get("country_name", country_code)
+                else:
+                    print(f"  Warning: No recipient info found (neither in marks nor mailing list), skipping...")
+                    continue
+
+            # Fallback for country name
+            if not country_name:
+                country_name = country_code
 
             if not to_value:
                 print(f"  Warning: No 'To' address for {country_code}, skipping...")
                 continue
+
+            print(f"  To: {to_value[:50]}{'...' if len(to_value) > 50 else ''}")
+            if cc_value:
+                print(f"  CC: {cc_value[:50]}{'...' if len(cc_value) > 50 else ''}")
 
             # Prepare template with marks
             prepared_template = prepare_template_with_marks(
