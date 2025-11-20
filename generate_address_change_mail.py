@@ -174,10 +174,11 @@ def prepare_template_with_marks(
     # Clear existing header paragraphs
     for para in list(header.paragraphs):
         header._element.remove(para._element)
-    # Add YAML front matter
+    # Add YAML front matter (no closing --- to avoid multiple document error)
+    # Escape double quotes in subject for YAML
+    safe_subject = subject.replace('"', '\\"')
     header.add_paragraph("---")
-    header.add_paragraph(f"Subject: {subject}")
-    header.add_paragraph("---")
+    header.add_paragraph(f'Subject: "{safe_subject}"')
 
     # Get the first table (trademark table)
     table = doc.tables[0]
