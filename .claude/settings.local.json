@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c:*)",
+      "Bash(python generate_mail_merge.py:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
