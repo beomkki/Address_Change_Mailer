@@ -17,6 +17,9 @@ from typing import Dict, List
 
 import openpyxl
 from docx import Document
+from docx.document import Document as _Document
+from docx.table import Table
+from docx.text.paragraph import Paragraph
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt
@@ -27,6 +30,51 @@ except ImportError as exc:
     raise SystemExit(
         "docx2msg 패키지를 찾을 수 없습니다. 먼저 `pip install docx2msg`를 실행해 주세요."
     ) from exc
+
+
+def iter_block_items(doc: _Document):
+    """Iterate through paragraphs and tables in document body."""
+    body = doc.element.body
+    for child in body.iterchildren():
+        if child.tag.endswith("}p"):
+            yield Paragraph(child, doc)
+        elif child.tag.endswith("}tbl"):
+            yield Table(child, doc)
+
+
+def convert_paragraph_placeholders(paragraph: Paragraph) -> None:
+    """Convert «field» placeholders to {{ field }} Jinja2 syntax."""
+    runs = list(paragraph.runs)
+    i = 0
+    while i < len(runs):
+        run = runs[i]
+        text = run.text
+        if not text:
+            i += 1
+            continue
+        if "«" in text and "»" in text:
+            run.text = re.sub(r"«([^»]+)»", r"{{ \1 }}", text)
+            i += 1
+            continue
+        if text == "«":
+            start_run = run
+            i += 1
+            name_parts: List[str] = []
+            while i < len(runs) and runs[i].text != "»":
+                name_parts.append(runs[i].text)
+                runs[i].text = ""
+                i += 1
+            field_name = "".join(name_parts)
+            start_run.text = f"{{{{ {field_name} }}}}"
+            if i < len(runs) and runs[i].text == "»":
+                runs[i].text = ""
+                i += 1
+            continue
+        if "«" in text:
+            run.text = text.replace("«", "{{ ")
+        if "»" in text:
+            run.text = run.text.replace("»", " }}")
+        i += 1
 
 
 def normalize_value(value) -> str:
@@ -153,6 +201,7 @@ def prepare_template_with_marks(
     template_path: Path,
     marks: List[Dict[str, str]],
     tmp_dir: Path,
+    country_code: str = "",
     country_name: str = "",
     subject: str = "",
 ) -> Path:
@@ -162,6 +211,7 @@ def prepare_template_with_marks(
         template_path: Path to the original Word template
         marks: List of trademark records to insert
         tmp_dir: Temporary directory for the modified template
+        country_code: Country code (e.g., VN, OA)
         country_name: Name of the country (for context)
         subject: Email subject line
 
@@ -172,6 +222,16 @@ def prepare_template_with_marks(
 
     if not doc.tables:
         raise ValueError("템플릿에 테이블이 없습니다.")
+
+    # Convert merge fields (« ») to Jinja2 syntax ({{ }})
+    for item in iter_block_items(doc):
+        if isinstance(item, Paragraph):
+            convert_paragraph_placeholders(item)
+        elif isinstance(item, Table):
+            for row in item.rows:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        convert_paragraph_placeholders(para)
 
     # Add YAML header for docx2msg (required for subject line)
     header = doc.sections[0].header
@@ -205,7 +265,7 @@ def prepare_template_with_marks(
         add_table_row(table, row_data)
 
     # Save modified template
-    temp_path = tmp_dir / f"template_{country_name}.docx"
+    temp_path = tmp_dir / f"template_{country_code}.docx"
     doc.save(temp_path)
     return temp_path
 
@@ -326,11 +386,21 @@ def run_address_change_mail_merge(
 
             # Prepare template with marks
             prepared_template = prepare_template_with_marks(
-                template_path, marks, tmp_path, country_code, subject
+                template_path, marks, tmp_path, country_code, country_name, subject
             )
+
+            # Build context for merge fields
+            context = {
+                "국가명칭": country_name,
+                "국가코드": country_code,
+                "Country": country_name,
+                "Country Code": country_code,
+            }
 
             try:
                 with Docx2Msg(prepared_template) as converter:
+                    # Render merge fields
+                    converter.template.render(context)
                     mail = converter.convert()
                     mail.Subject = subject
                     if to_value:
