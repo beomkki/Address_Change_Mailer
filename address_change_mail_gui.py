@@ -87,20 +87,28 @@ def launch_gui() -> None:
         template_path = template_var.get().strip()
         output_dir = output_var.get().strip()
 
-        if not marks_path or not mailing_list_path or not template_path or not output_dir:
-            messagebox.showerror("입력 오류", "모든 경로를 선택해 주세요.")
+        # Marks, template, and output dir are required
+        if not marks_path or not template_path or not output_dir:
+            messagebox.showerror("입력 오류", "상표 리스트, 템플릿, 출력 폴더는 필수입니다.")
             return
 
-        # Validate files exist
+        # Validate required files exist
         if not Path(marks_path).exists():
             messagebox.showerror("파일 오류", f"상표 리스트 파일을 찾을 수 없습니다:\n{marks_path}")
-            return
-        if not Path(mailing_list_path).exists():
-            messagebox.showerror("파일 오류", f"메일링 리스트 파일을 찾을 수 없습니다:\n{mailing_list_path}")
             return
         if not Path(template_path).exists():
             messagebox.showerror("파일 오류", f"템플릿 파일을 찾을 수 없습니다:\n{template_path}")
             return
+
+        # Mailing list is optional - warn if file doesn't exist
+        if mailing_list_path and not Path(mailing_list_path).exists():
+            response = messagebox.askyesno(
+                "메일링 리스트 없음",
+                f"메일링 리스트 파일을 찾을 수 없습니다:\n{mailing_list_path}\n\n"
+                "상표 리스트의 수신인 정보만 사용하여 계속하시겠습니까?"
+            )
+            if not response:
+                return
 
         try:
             generated = run_address_change_mail_merge(

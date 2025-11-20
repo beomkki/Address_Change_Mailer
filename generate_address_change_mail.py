@@ -244,8 +244,6 @@ def run_address_change_mail_merge(
     # Validate files exist
     if not marks_excel.exists():
         raise SystemExit(f"상표 리스트 파일을 찾을 수 없습니다: {marks_excel}")
-    if not mailing_list_excel.exists():
-        raise SystemExit(f"메일링 리스트 파일을 찾을 수 없습니다: {mailing_list_excel}")
     if not template_path.exists():
         raise SystemExit(f"워드 템플릿을 찾을 수 없습니다: {template_path}")
 
@@ -254,9 +252,14 @@ def run_address_change_mail_merge(
     marks_by_country = load_marks_by_country(marks_excel)
     print(f"Found {len(marks_by_country)} countries with {sum(len(m) for m in marks_by_country.values())} total marks")
 
-    print("Loading recipient mapping...")
-    recipient_mapping = load_recipient_mapping(mailing_list_excel)
-    print(f"Found {len(recipient_mapping)} recipient mappings")
+    # Load recipient mapping (optional)
+    recipient_mapping = {}
+    if mailing_list_excel.exists():
+        print("Loading recipient mapping from mailing list...")
+        recipient_mapping = load_recipient_mapping(mailing_list_excel)
+        print(f"Found {len(recipient_mapping)} recipient mappings")
+    else:
+        print("Mailing list file not found - will use recipient info from marks file only")
 
     generated = 0
 
