@@ -287,7 +287,8 @@ def run_address_change_mail_merge(
             first_mark = marks[0] if marks else {}
             to_value = first_mark.get("수신", "") or first_mark.get("To", "")
             cc_value = first_mark.get("참조", "") or first_mark.get("CC", "")
-            country_name = first_mark.get("국가명칭", "") or first_mark.get("Country Name", "")
+            country_name = first_mark.get("국가명칭", "") or first_mark.get("Country Name", "") or first_mark.get("Country", "")
+            our_ref = first_mark.get("Our. Ref.", "") or first_mark.get("참조번호", "") or "Our. Ref."
 
             # Priority 2: If not in marks data, lookup from recipient mapping
             if not to_value:
@@ -313,7 +314,7 @@ def run_address_change_mail_merge(
                 print(f"  CC: {cc_value[:50]}{'...' if len(cc_value) > 50 else ''}")
 
             # Generate MSG file metadata
-            subject = f"(Our. Ref.)  Inquiry regarding Recordal of Change of Address ({country_name})"
+            subject = f"({our_ref})  Inquiry regarding Recordal of Change of Address ({country_name})"
             base_name = sanitize_filename(f"{country_code}_{country_name}_AddressChange", country_code, index)
 
             # Prepare template with marks
