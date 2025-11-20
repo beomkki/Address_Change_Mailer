@@ -134,15 +134,19 @@ def add_table_row(table, row_data: List[str]):
         table: Word table object
         row_data: List of cell values for the new row
     """
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
     new_row = table.add_row()
     for idx, value in enumerate(row_data):
         if idx < len(new_row.cells):
             cell = new_row.cells[idx]
             cell.text = value
-            # Set font size to match existing cells
+            # Set font to Times New Roman, size 12, center aligned
             for paragraph in cell.paragraphs:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 for run in paragraph.runs:
-                    run.font.size = Pt(10)
+                    run.font.name = 'Times New Roman'
+                    run.font.size = Pt(12)
 
 
 def prepare_template_with_marks(
@@ -314,8 +318,11 @@ def run_address_change_mail_merge(
                 print(f"  CC: {cc_value[:50]}{'...' if len(cc_value) > 50 else ''}")
 
             # Generate MSG file metadata
-            subject = f"Inquiry regarding Recordal of Change of Address ({country_name})"
+            subject = f"[{country_name}]"
             base_name = sanitize_filename(f"{country_code}_{country_name}_AddressChange", country_code, index)
+
+            # Get attachment info from first mark
+            attachment_value = first_mark.get("첨부파일", "") or first_mark.get("Attachment", "")
 
             # Prepare template with marks
             prepared_template = prepare_template_with_marks(
@@ -330,6 +337,20 @@ def run_address_change_mail_merge(
                         mail.To = to_value
                     if cc_value:
                         mail.CC = cc_value
+
+                    # Add attachments
+                    if attachment_value:
+                        attachment_paths = [p.strip() for p in attachment_value.split(";") if p.strip()]
+                        for attachment_path_str in attachment_paths:
+                            attachment_path = Path(attachment_path_str)
+                            if not attachment_path.is_absolute():
+                                attachment_path = base_dir / attachment_path
+
+                            if attachment_path.exists():
+                                mail.Attachments.Add(str(attachment_path.resolve()))
+                                print(f"  ✓ Attached: {attachment_path.name}")
+                            else:
+                                print(f"  ⚠ Attachment not found: {attachment_path}")
 
                     msg_path = output_dir / f"{base_name}.msg"
                     mail.SaveAs(str(msg_path.resolve()), 3)
